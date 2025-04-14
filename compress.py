@@ -124,6 +124,7 @@ def run_vq(
     optim_params: OptimizationParams,
     pipeline_params: PipelineParams,
     comp_params: CompressionParams,
+    use_image_w
 ):
     gaussians = GaussianModel(
         model_params.sh_degree, quantization=not optim_params.not_quantization_aware
@@ -218,6 +219,7 @@ def run_vq(
                 -1
             ],
             debug_from=-1,
+            use_image_w=use_image_w
         )
         end_time = time.time()
         timings["finetune"]=end_time-start_time
@@ -237,16 +239,17 @@ def run_vq(
     file_size = os.path.getsize(out_file) / 1024**2
     print(f"saved vq finetuned model to {out_file}")
 
-    # eval model
-    print("evaluating...")
-    metrics = render_and_eval(gaussians, scene, model_params, pipeline_params)
-    metrics["size"] = file_size
-    print(metrics)
-    with open(f"{comp_params.output_vq}/results.json","w") as f:
-        json.dump({f"ours_{iteration}":metrics},f,indent=4)
+    # # eval model
+    # print("evaluating...")
+    # metrics = render_and_eval(gaussians, scene, model_params, pipeline_params)
+    # metrics["size"] = file_size
+    # print(metrics)
+    # with open(f"{comp_params.output_vq}/results.json","w") as f:
+    #     json.dump({f"ours_{iteration}":metrics},f,indent=4)
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Compression script parameters")
+    parser.add_argument("--use_image_w", action="store_true", help="If set, it will use mask.")
     model = ModelParams(parser, sentinel=True)
     model.data_device = "cuda"
     pipeline = PipelineParams(parser)
@@ -262,4 +265,4 @@ if __name__ == "__main__":
     pipeline_params = pipeline.extract(args)
     comp_params = comp.extract(args)
 
-    run_vq(model_params, optim_params, pipeline_params, comp_params)
+    run_vq(model_params, optim_params, pipeline_params, comp_params, args.use_image_w)

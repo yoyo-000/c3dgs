@@ -9,7 +9,7 @@ from tqdm import tqdm
 from utils.image_utils import psnr
 from argparse import  Namespace
 
-def finetune(scene: Scene, dataset, opt, comp, pipe, testing_iterations, debug_from):
+def finetune(scene: Scene, dataset, opt, comp, pipe, testing_iterations, debug_from,use_image_w):
     prepare_output_and_logger(comp.output_vq, dataset)
 
     first_iter = scene.loaded_iter
@@ -54,6 +54,25 @@ def finetune(scene: Scene, dataset, opt, comp, pipe, testing_iterations, debug_f
             1.0 - ssim(image, gt_image)
         )
         loss.backward()
+
+        # load gt_image_w
+        if use_image_w:
+            if viewpoint_cam.image_w is not None:
+                gt_image_w = viewpoint_cam.image_w.cuda(non_blocking=True)
+            else:
+                return
+        else:
+            gt_image_w = None
+
+        # Loss2
+        if use_image_w:
+            bg_color_w = [1, 1, 1]
+            background_w = torch.tensor(bg_color_w, dtype=torch.float32, device="cuda")
+            render_pkg_w = render(viewpoint_cam, scene.gaussians, pipe, background_w)
+            image_w_render = render_pkg_w["render"]
+            Ll1 = l1_loss(image_w_render, gt_image_w)
+            loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim(image_w_render, gt_image_w))
+            loss.backward()
 
         iter_end.record()
         scene.gaussians.update_learning_rate(iteration)

@@ -10,6 +10,7 @@
 #
 
 import os
+import re
 import sys
 from PIL import Image
 from typing import NamedTuple
@@ -34,6 +35,7 @@ class CameraInfo(NamedTuple):
     image_name: str
     width: int
     height: int
+    image_w: np.array
 
 class SceneInfo(NamedTuple):
     point_cloud: BasicPointCloud
@@ -66,6 +68,11 @@ def getNerfppNorm(cam_info):
     return {"translate": translate, "radius": radius}
 
 def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
+    image_w_folder = os.path.join(os.path.dirname(images_folder), "images-w")
+    load_image_w = False
+    if os.path.exists(image_w_folder):
+        load_image_w = True
+
     cam_infos = []
     for idx, key in enumerate(cam_extrinsics):
         sys.stdout.write('\r')
@@ -91,6 +98,11 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
             focal_length_y = intr.params[1]
             FovY = focal2fov(focal_length_y, height)
             FovX = focal2fov(focal_length_x, width)
+        elif intr.model=="SIMPLE_RADIAL":
+            focal_length_x = intr.params[0]
+            focal_length_y = intr.params[1]
+            FovY = focal2fov(focal_length_y, height)
+            FovX = focal2fov(focal_length_x, width)
         else:
             assert False, "Colmap camera model not handled: only undistorted datasets (PINHOLE or SIMPLE_PINHOLE cameras) supported!"
 
@@ -98,8 +110,15 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
         image_name = os.path.basename(image_path).split(".")[0]
         image = Image.open(image_path)
 
+        image_w = None
+        # if load_image_w:
+        #     image_w_names = os.listdir(image_w_folder)
+        #     matched_files = [f for f in image_w_names if re.match(image_name, f)]
+        #     image_w_path = os.path.join(image_w_folder, matched_files[0])
+        #     image_w = Image.open(image_w_path)
+
         cam_info = CameraInfo(uid=uid, R=R, T=T, FovY=FovY, FovX=FovX, image=image,
-                              image_path=image_path, image_name=image_name, width=width, height=height)
+                              image_path=image_path, image_name=image_name, width=width, height=height,image_w=image_w)
         cam_infos.append(cam_info)
     sys.stdout.write('\n')
     return cam_infos

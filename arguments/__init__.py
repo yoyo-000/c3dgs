@@ -69,7 +69,7 @@ class PipelineParams(ParamGroup):
 class CompressionParams(ParamGroup):
     def __init__(self, parser):
         self.load_iteration = -1
-        self.finetune_iterations = 5000
+        self.finetune_iterations = 0
 
         self.color_codebook_size = 2**12
         self.color_importance_include = 0.6*1e-6

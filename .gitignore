@@ -8,3 +8,6 @@ models/
 **/build/
 **/*.so
 scripts/
+
+output/
+.vscode/
